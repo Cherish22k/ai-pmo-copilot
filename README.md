@@ -4,7 +4,7 @@
 
 A single-page tool that turns raw project artifacts into ready-to-share PMO deliverables — with every line traceable back to a source document. Nothing invented.
 
-🔗 **Live demo:** `https://<cherish_22k>.github.io/ai-pmo-copilot/` 
+🔗 **Live demo:** `https://cherish22k.github.io/ai-pmo-copilot/` 
 
 ## What it does
 
