@@ -1,0 +1,480 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>AI PMO Copilot — PM AI Fluency Lab</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --bg:#0F1B2D;
+    --panel:#16243A;
+    --panel-2:#1C2D46;
+    --paper:#EDEFEA;
+    --ink:#ECEFE6;
+    --muted:#90A0B5;
+    --line:#28364E;
+    --green:#3FB68B;
+    --amber:#E8A33D;
+    --red:#E2574C;
+    --mono:'IBM Plex Mono', monospace;
+    --sans:'IBM Plex Sans', sans-serif;
+    --display:'Space Grotesk', sans-serif;
+  }
+  *{box-sizing:border-box;}
+  html,body{margin:0;padding:0;background:var(--bg);color:var(--ink);font-family:var(--sans);}
+  body{min-height:100vh;}
+  a{color:inherit;}
+
+  .wrap{max-width:1280px;margin:0 auto;padding:28px 24px 80px;}
+
+  /* ---------- Header ---------- */
+  header.top{display:flex;flex-direction:column;gap:18px;margin-bottom:28px;}
+  .eyebrow{
+    font-family:var(--mono);font-size:12px;letter-spacing:.14em;text-transform:uppercase;
+    color:var(--amber);display:flex;align-items:center;gap:10px;
+  }
+  .eyebrow::before{content:"";width:7px;height:7px;border-radius:50%;background:var(--amber);box-shadow:0 0 8px var(--amber);}
+  h1{
+    font-family:var(--display);font-weight:700;font-size:clamp(28px,4vw,44px);
+    margin:0;line-height:1.05;letter-spacing:-.01em;
+  }
+  h1 span{color:var(--muted);font-weight:500;}
+  .sub{color:var(--muted);font-size:15px;max-width:640px;line-height:1.5;margin:0;}
+
+  /* ---------- RAG Status Board (signature element) ---------- */
+  .board{
+    display:grid;grid-template-columns:repeat(auto-fit,minmax(190px,1fr));
+    gap:1px;background:var(--line);border:1px solid var(--line);border-radius:10px;overflow:hidden;
+  }
+  .board .cell{background:var(--panel);padding:14px 16px;display:flex;flex-direction:column;gap:8px;}
+  .board .cell .label{font-family:var(--mono);font-size:11px;letter-spacing:.08em;text-transform:uppercase;color:var(--muted);}
+  .board .cell .state{display:flex;align-items:center;gap:8px;font-family:var(--mono);font-size:13px;}
+  .dot{width:9px;height:9px;border-radius:50%;background:#3d4a60;flex:none;transition:background .3s, box-shadow .3s;}
+  .dot.amber{background:var(--amber);box-shadow:0 0 8px rgba(232,163,61,.6);}
+  .dot.green{background:var(--green);box-shadow:0 0 8px rgba(63,182,139,.6);}
+  .state small{color:var(--muted);}
+
+  /* ---------- Layout ---------- */
+  .grid{display:grid;grid-template-columns:1fr;gap:20px;margin-top:24px;}
+  @media(min-width:980px){.grid{grid-template-columns:400px 1fr;align-items:start;}}
+
+  .panel{background:var(--panel);border:1px solid var(--line);border-radius:12px;overflow:hidden;}
+  .panel-head{
+    padding:14px 18px;border-bottom:1px solid var(--line);display:flex;align-items:center;justify-content:space-between;
+    background:var(--panel-2);
+  }
+  .panel-head h2{font-family:var(--display);font-size:15px;margin:0;font-weight:600;letter-spacing:.01em;}
+  .panel-head .tag{font-family:var(--mono);font-size:10px;color:var(--muted);letter-spacing:.08em;text-transform:uppercase;}
+  .panel-body{padding:16px 18px;}
+
+  /* Intake tabs */
+  .tabs{display:flex;flex-wrap:wrap;gap:6px;margin-bottom:12px;}
+  .tab{
+    font-family:var(--mono);font-size:11px;padding:6px 10px;border-radius:6px;border:1px solid var(--line);
+    background:transparent;color:var(--muted);cursor:pointer;letter-spacing:.03em;
+  }
+  .tab.active{background:var(--amber);color:#1a1408;border-color:var(--amber);font-weight:600;}
+  textarea{
+    width:100%;min-height:230px;background:#0D1826;color:var(--paper);border:1px solid var(--line);
+    border-radius:8px;padding:12px;font-family:var(--mono);font-size:12.5px;line-height:1.55;resize:vertical;
+  }
+  textarea:focus{outline:2px solid var(--amber);outline-offset:1px;}
+  .field-label{font-family:var(--mono);font-size:11px;color:var(--muted);margin:0 0 6px;text-transform:uppercase;letter-spacing:.06em;}
+  .doc-pane{display:none;}
+  .doc-pane.active{display:block;}
+
+  .actions{display:flex;flex-wrap:wrap;gap:8px;margin-top:16px;}
+  button.run{
+    font-family:var(--mono);font-size:12px;letter-spacing:.03em;padding:10px 14px;border-radius:7px;
+    background:var(--panel-2);border:1px solid var(--line);color:var(--ink);cursor:pointer;
+    transition:border-color .15s, transform .05s;
+  }
+  button.run:hover{border-color:var(--green);}
+  button.run:active{transform:scale(.98);}
+  button.run.primary{background:var(--green);color:#082019;border-color:var(--green);font-weight:600;}
+  button.run.primary:hover{border-color:var(--green);}
+
+  /* Console */
+  .console-head{display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap;}
+  .console-tools{display:flex;gap:8px;}
+  .console-tools button{
+    font-family:var(--mono);font-size:11px;padding:6px 10px;border-radius:6px;border:1px solid var(--line);
+    background:transparent;color:var(--muted);cursor:pointer;
+  }
+  .console-tools button:hover{color:var(--ink);border-color:var(--muted);}
+  #output{
+    background:#0D1826;border:1px solid var(--line);border-radius:8px;padding:18px;min-height:420px;
+    font-family:var(--mono);font-size:12.5px;line-height:1.65;white-space:pre-wrap;color:var(--paper);
+    max-height:640px;overflow-y:auto;
+  }
+  #output .placeholder{color:var(--muted);font-style:normal;}
+  #output h3{font-family:var(--display);color:var(--amber);font-size:14px;margin:18px 0 6px;}
+  #output h3:first-child{margin-top:0;}
+  #output .rag{padding:1px 6px;border-radius:4px;font-size:11px;font-weight:600;}
+  .rag.R{background:rgba(226,87,76,.18);color:#ff8b81;}
+  .rag.A{background:rgba(232,163,61,.18);color:#ffc46b;}
+  .rag.G{background:rgba(63,182,139,.18);color:#7fe0bb;}
+
+  /* Review + governance */
+  .lower{display:grid;grid-template-columns:1fr;gap:20px;margin-top:20px;}
+  @media(min-width:980px){.lower{grid-template-columns:1fr 1fr;}}
+  .checklist label{display:flex;gap:10px;align-items:flex-start;padding:8px 0;border-bottom:1px dashed var(--line);font-size:13.5px;line-height:1.4;}
+  .checklist label:last-child{border-bottom:none;}
+  .checklist input{margin-top:3px;accent-color:var(--green);}
+  details{border:1px solid var(--line);border-radius:8px;margin-bottom:8px;background:var(--panel-2);}
+  details summary{padding:10px 14px;cursor:pointer;font-family:var(--mono);font-size:12.5px;color:var(--ink);letter-spacing:.02em;}
+  details[open] summary{color:var(--amber);}
+  details .content{padding:0 14px 14px;color:var(--muted);font-size:13px;line-height:1.55;}
+
+  footer{margin-top:40px;padding-top:20px;border-top:1px solid var(--line);color:var(--muted);font-size:12px;font-family:var(--mono);}
+  footer a{color:var(--amber);text-decoration:none;}
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <header class="top">
+    <div class="eyebrow">AI PMO Copilot · document-grounded · human-reviewed</div>
+    <h1>AI PMO Copilot<span> — PM AI Fluency Lab</span></h1>
+    <p class="sub">Paste real project artifacts on the left. Generate status reports, risk summaries, stakeholder updates, and an action tracker on the right — every line traceable back to a source document, nothing invented.</p>
+
+    <div class="board" id="board">
+      <div class="cell" data-artifact="status">
+        <div class="label">Status Report</div>
+        <div class="state"><span class="dot" id="dot-status"></span><small>not generated</small></div>
+      </div>
+      <div class="cell" data-artifact="risk">
+        <div class="label">Risk Summary</div>
+        <div class="state"><span class="dot" id="dot-risk"></span><small>not generated</small></div>
+      </div>
+      <div class="cell" data-artifact="stakeholder">
+        <div class="label">Stakeholder Update</div>
+        <div class="state"><span class="dot" id="dot-stakeholder"></span><small>not generated</small></div>
+      </div>
+      <div class="cell" data-artifact="actions">
+        <div class="label">Action Tracker</div>
+        <div class="state"><span class="dot" id="dot-actions"></span><small>not generated</small></div>
+      </div>
+      <div class="cell" data-artifact="changed">
+        <div class="label">What Changed</div>
+        <div class="state"><span class="dot" id="dot-changed"></span><small>not generated</small></div>
+      </div>
+    </div>
+  </header>
+
+  <div class="grid">
+    <!-- INTAKE PANEL -->
+    <div class="panel">
+      <div class="panel-head">
+        <h2>Document intake</h2>
+        <span class="tag">source of truth</span>
+      </div>
+      <div class="panel-body">
+        <div class="tabs" id="tabs">
+          <button class="tab active" data-target="charter">Charter</button>
+          <button class="tab" data-target="notes-prev">Notes (last week)</button>
+          <button class="tab" data-target="notes-curr">Notes (this week)</button>
+          <button class="tab" data-target="risks">Risk register</button>
+          <button class="tab" data-target="stakeholders">Stakeholders</button>
+        </div>
+
+        <div class="doc-pane active" id="pane-charter">
+          <p class="field-label">Project charter (free text)</p>
+          <textarea id="charter"></textarea>
+        </div>
+        <div class="doc-pane" id="pane-notes-prev">
+          <p class="field-label">Meeting notes — previous week</p>
+          <textarea id="notesPrev"></textarea>
+        </div>
+        <div class="doc-pane" id="pane-notes-curr">
+          <p class="field-label">Meeting notes — current week (use "- [ ] task — Owner — due date" for actions)</p>
+          <textarea id="notesCurr"></textarea>
+        </div>
+        <div class="doc-pane" id="pane-risks">
+          <p class="field-label">Risk register CSV — id,description,severity(High/Medium/Low),owner,status</p>
+          <textarea id="risks"></textarea>
+        </div>
+        <div class="doc-pane" id="pane-stakeholders">
+          <p class="field-label">Stakeholder list CSV — name,role,interest(High/Medium/Low),channel</p>
+          <textarea id="stakeholders"></textarea>
+        </div>
+
+        <div class="actions">
+          <button class="run primary" onclick="genStatus()">Generate status report</button>
+          <button class="run" onclick="genRisk()">Summarize risks</button>
+          <button class="run" onclick="genStakeholder()">Draft stakeholder update</button>
+          <button class="run" onclick="genActions()">Extract action items</button>
+          <button class="run" onclick="genChanged()">What changed since last week</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- CONSOLE PANEL -->
+    <div class="panel">
+      <div class="panel-head">
+        <h2>Console output</h2>
+        <div class="console-tools">
+          <button onclick="copyOutput()">Copy</button>
+          <button onclick="downloadOutput()">Download .md</button>
+          <button onclick="clearOutput()">Clear</button>
+        </div>
+      </div>
+      <div class="panel-body">
+        <div id="output"><span class="placeholder">Run a generator to see grounded output here. Every fact is pulled from the documents in the intake panel — anything missing is labeled, not guessed.</span></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- LOWER: REVIEW + GOVERNANCE -->
+  <div class="lower">
+    <div class="panel">
+      <div class="panel-head"><h2>Human review checklist</h2><span class="tag">required before send</span></div>
+      <div class="panel-body checklist">
+        <label><input type="checkbox"><span>Every claim in the output traces to a specific source document — no invented facts.</span></label>
+        <label><input type="checkbox"><span>Items marked "Not found in source materials" have been checked with the team, not silently dropped.</span></label>
+        <label><input type="checkbox"><span>Risk severities and owners match the actual risk register, not an AI guess.</span></label>
+        <label><input type="checkbox"><span>Stakeholder tone and detail level fit that audience (exec vs. team).</span></label>
+        <label><input type="checkbox"><span>No confidential or personally identifiable data was pasted that shouldn't leave this system.</span></label>
+        <label><input type="checkbox"><span>A second person has skimmed the final output before it goes out.</span></label>
+      </div>
+    </div>
+
+    <div class="panel">
+      <div class="panel-head"><h2>Governance notes</h2><span class="tag">responsible use</span></div>
+      <div class="panel-body">
+        <details open>
+          <summary>What this tool is good at</summary>
+          <div class="content">Turning scattered notes into a consistent first draft: pulling structure out of meeting notes, formatting a risk register into prose, and re-tuning the same facts for different audiences.</div>
+        </details>
+        <details>
+          <summary>Where it can get things wrong</summary>
+          <div class="content">It has no judgment about which risks actually matter most this week, can't detect sarcasm or nuance in notes, and will faithfully reformat a mistake if the source document has one.</div>
+        </details>
+        <details>
+          <summary>What should never be pasted here</summary>
+          <div class="content">Customer PII, credentials, unreleased financials, or anything under an NDA that this tool (or a real LLM backend) isn't cleared to process.</div>
+        </details>
+        <details>
+          <summary>How to judge output quality</summary>
+          <div class="content">Check traceability first — can you point to the source line for each claim? Then check omissions — did anything important in the source get dropped silently?</div>
+        </details>
+      </div>
+    </div>
+  </div>
+
+  <footer>
+    AI PMO Copilot — a PM AI Fluency Lab demo. Client-side rule-based generation, no data leaves this page. See the README for how to wire in a real Claude backend. · <a href="https://github.com" target="_blank" rel="noopener">github.com/yourname/ai-pmo-copilot</a>
+  </footer>
+</div>
+
+<script>
+/* ---------------- Tabs ---------------- */
+document.getElementById('tabs').addEventListener('click', e=>{
+  const btn = e.target.closest('.tab');
+  if(!btn) return;
+  document.querySelectorAll('.tab').forEach(t=>t.classList.remove('active'));
+  document.querySelectorAll('.doc-pane').forEach(p=>p.classList.remove('active'));
+  btn.classList.add('active');
+  document.getElementById('pane-'+btn.dataset.target).classList.add('active');
+});
+
+/* ---------------- Sample data ---------------- */
+document.getElementById('charter').value =
+`Project: Internal AI Rollout (PMO Copilot Pilot)
+Sponsor: VP Operations
+Goal: Reduce time PMs spend compiling weekly status reports by 50% within one quarter.
+Scope: Pilot with 3 PM teams; status reporting, risk logging, and stakeholder updates only.
+Out of scope: Budget forecasting, resourcing tools.
+Timeline: 8-week pilot, kickoff June 1.`;
+
+document.getElementById('notesPrev').value =
+`Week 1 sync:
+- Vendor contract for LLM API access still pending legal review.
+- Pilot teams selected: Ops, Product, Customer Success.
+- Action: Confirm data handling policy — Priya — due June 5
+- Action: Draft prompt templates — Alex — due June 6
+- Risk raised: uncertainty on whether Legal review finishes before kickoff.`;
+
+document.getElementById('notesCurr').value =
+`Week 2 sync:
+- Legal review of vendor contract completed, signed June 4.
+- Prompt templates drafted and tested with sample data.
+- Customer Success team reports notes format is inconsistent, may slow parsing.
+- Action: Standardize meeting note template — Priya — due June 12
+- Action: Run pilot with Ops team — Alex — due June 14
+- Action: Collect PM feedback after first cycle — Jordan — due June 18
+- New risk: inconsistent note formats across teams could reduce output quality.`;
+
+document.getElementById('risks').value =
+`R1,Vendor contract delays block pilot kickoff,High,Priya,Closed
+R2,Inconsistent meeting note formats reduce parsing accuracy,Medium,Alex,Open
+R3,PM teams may not adopt tool without visible time savings,Medium,Jordan,Open
+R4,Sensitive data pasted into tool without review,High,Priya,Open`;
+
+document.getElementById('stakeholders').value =
+`VP Operations,Executive Sponsor,High,Email summary
+Ops Team Lead,Pilot Owner,High,Slack + weekly sync
+Customer Success Lead,Pilot Participant,Medium,Email
+Legal,Compliance Reviewer,Low,Email on request`;
+
+/* ---------------- Helpers ---------------- */
+function val(id){ return document.getElementById(id).value.trim(); }
+
+function parseCSV(text, cols){
+  return text.split('\n').map(l=>l.trim()).filter(Boolean).map(line=>{
+    const parts = line.split(',').map(s=>s.trim());
+    const obj = {};
+    cols.forEach((c,i)=> obj[c] = parts[i] || '');
+    return obj;
+  });
+}
+
+function extractActions(notesText){
+  const lines = notesText.split('\n');
+  const actions = [];
+  lines.forEach(l=>{
+    const m = l.match(/action:?\s*(.+?)\s*—\s*(.+?)\s*—\s*due\s*(.+)/i) ||
+              l.match(/-\s*\[\s*\]\s*(.+?)\s*—\s*(.+?)\s*—\s*due\s*(.+)/i);
+    if(m){ actions.push({task:m[1].trim(), owner:m[2].trim(), due:m[3].trim()}); }
+  });
+  return actions;
+}
+
+function extractRiskLines(notesText){
+  return notesText.split('\n').filter(l=>/risk/i.test(l) && !/^Risk\s*:/i.test(l) === false || /risk raised|new risk/i.test(l))
+    .filter(l=>/risk/i.test(l));
+}
+
+function ragBadge(sev){
+  const s = (sev||'').toLowerCase();
+  if(s.startsWith('h')) return '<span class="rag R">HIGH</span>';
+  if(s.startsWith('m')) return '<span class="rag A">MEDIUM</span>';
+  if(s.startsWith('l')) return '<span class="rag G">LOW</span>';
+  return '<span class="rag A">UNKNOWN</span>';
+}
+
+function lightBoard(key){
+  document.getElementById('dot-'+key).className = 'dot green';
+  document.getElementById('dot-'+key).parentElement.querySelector('small').textContent = 'generated';
+}
+
+let outputBuffer = ''; // raw markdown for copy/download
+
+function writeOutput(html, markdown, replace){
+  const out = document.getElementById('output');
+  if(replace || out.querySelector('.placeholder')){ out.innerHTML = ''; outputBuffer = ''; }
+  out.insertAdjacentHTML('beforeend', html);
+  out.scrollTop = out.scrollHeight;
+  outputBuffer += markdown + '\n\n';
+}
+
+/* ---------------- Generators ---------------- */
+function genStatus(){
+  const charter = val('charter');
+  const notes = val('notesCurr');
+  const risks = parseCSV(val('risks'), ['id','desc','sev','owner','status']);
+  const actions = extractActions(notes);
+  const openHigh = risks.filter(r=>r.sev && r.sev.toLowerCase()==='high' && r.status.toLowerCase()!=='closed');
+  const goal = (charter.match(/Goal:\s*(.+)/i)||[])[1] || 'Not found in source materials.';
+
+  const md =
+`### Weekly Status Report
+**Goal (from charter):** ${goal}
+**Open high-severity risks:** ${openHigh.length}
+**Open action items:** ${actions.length}
+
+**This week:**
+${notes.split('\n').filter(l=>l.trim().startsWith('-') && !/action:/i.test(l)).map(l=>'- '+l.replace(/^-+\s*/,'')).join('\n') || '- Not found in source materials.'}
+
+**Next steps:**
+${actions.slice(0,3).map(a=>`- ${a.task} (${a.owner}, due ${a.due})`).join('\n') || '- Not found in source materials.'}`;
+
+  const html = `<h3>Weekly Status Report</h3>` + md.replace(/^### .+\n/,'').split('\n').map(l=>l).join('\n');
+  writeOutput(`<div>${escapeHtml(html)}</div>`, md, false);
+  lightBoard('status');
+}
+
+function genRisk(){
+  const risks = parseCSV(val('risks'), ['id','desc','sev','owner','status']);
+  if(!risks.length){ writeOutput('<div>No risk register provided.</div>','No risk register provided.',false); return; }
+  const rows = risks.map(r=>`${r.id} — ${r.desc} — ${ragBadge(r.sev)} — owner: ${r.owner} — status: ${r.status}`);
+  const md = `### Risk Summary\n` + risks.map(r=>`- **${r.id}** (${r.sev}): ${r.desc} — owner ${r.owner}, status ${r.status}`).join('\n');
+  const html = `<h3>Risk Summary</h3>` + rows.map(r=>escapeHtml(r)).join('<br>');
+  writeOutput(`<div>${html}</div>`, md, false);
+  lightBoard('risk');
+}
+
+function genStakeholder(){
+  const stakeholders = parseCSV(val('stakeholders'), ['name','role','interest','channel']);
+  const notes = val('notesCurr');
+  const risks = parseCSV(val('risks'), ['id','desc','sev','owner','status']);
+  const openHigh = risks.filter(r=>r.sev && r.sev.toLowerCase()==='high' && r.status.toLowerCase()!=='closed');
+  if(!stakeholders.length){ writeOutput('<div>No stakeholder list provided.</div>','No stakeholder list provided.',false); return; }
+
+  let md = `### Stakeholder Updates\n`;
+  stakeholders.forEach(s=>{
+    const brief = s.interest.toLowerCase()==='high';
+    md += `\n**To: ${s.name} (${s.role}) — via ${s.channel}**\n`;
+    if(brief){
+      md += `Full detail update: this week's progress, ${openHigh.length} open high-severity risk(s), and next actions.\n${notes.split('\n').filter(l=>l.trim().startsWith('-') && !/action:/i.test(l)).slice(0,3).map(l=>'- '+l.replace(/^-+\s*/,'')).join('\n')}\n`;
+    } else {
+      md += `Brief update: pilot on track, ${openHigh.length} high-severity risk(s) being actively managed.\n`;
+    }
+  });
+  const html = md.split('\n').map(escapeHtml).join('<br>');
+  writeOutput(`<div>${html}</div>`, md, false);
+  lightBoard('stakeholder');
+}
+
+function genActions(){
+  const actionsPrev = extractActions(val('notesPrev'));
+  const actionsCurr = extractActions(val('notesCurr'));
+  const all = [...actionsPrev, ...actionsCurr];
+  if(!all.length){ writeOutput('<div>No action items found in notes.</div>','No action items found.',false); return; }
+  const md = `### Action Item Tracker\n| Task | Owner | Due |\n|---|---|---|\n` + all.map(a=>`| ${a.task} | ${a.owner} | ${a.due} |`).join('\n');
+  const html = `<h3>Action Item Tracker</h3>` + all.map(a=>escapeHtml(`- ${a.task} — ${a.owner} — due ${a.due}`)).join('<br>');
+  writeOutput(`<div>${html}</div>`, md, false);
+  lightBoard('actions');
+}
+
+function genChanged(){
+  const prev = extractActions(val('notesPrev')).map(a=>a.task);
+  const curr = extractActions(val('notesCurr')).map(a=>a.task);
+  const newItems = curr.filter(t=>!prev.includes(t));
+  const completed = prev.filter(t=>!curr.includes(t));
+  const prevRisks = extractRiskLines(val('notesPrev'));
+  const currRisks = extractRiskLines(val('notesCurr'));
+  const newRisks = currRisks.filter(r=>!prevRisks.includes(r));
+
+  const md = `### What Changed Since Last Update\n**New action items:**\n${newItems.map(t=>'- '+t).join('\n') || '- None'}\n\n**Likely completed / resolved:**\n${completed.map(t=>'- '+t).join('\n') || '- None'}\n\n**New risks raised:**\n${newRisks.map(t=>'- '+t.trim()).join('\n') || '- None'}`;
+  const html = md.split('\n').map(escapeHtml).join('<br>');
+  writeOutput(`<div>${html}</div>`, md, false);
+  lightBoard('changed');
+}
+
+function escapeHtml(str){
+  return str.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+}
+
+function copyOutput(){
+  navigator.clipboard.writeText(outputBuffer.trim()).then(()=>{
+    const btn = event.target; const old = btn.textContent; btn.textContent='Copied'; setTimeout(()=>btn.textContent=old,1200);
+  });
+}
+function downloadOutput(){
+  const blob = new Blob([outputBuffer.trim() || 'No output yet.'], {type:'text/markdown'});
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = 'pmo-copilot-output.md';
+  a.click();
+}
+function clearOutput(){
+  document.getElementById('output').innerHTML = '<span class="placeholder">Run a generator to see grounded output here. Every fact is pulled from the documents in the intake panel — anything missing is labeled, not guessed.</span>';
+  outputBuffer = '';
+  document.querySelectorAll('.dot').forEach(d=>{ d.className='dot'; d.parentElement.querySelector('small').textContent='not generated'; });
+}
+</script>
+</body>
+</html>
