@@ -37,7 +37,7 @@ Single-file HTML/CSS/JS — no build step, no dependencies. Open `index.html` in
 ## Running locally
 
 ```bash
-git clone https://github.com/<your-username>/ai-pmo-copilot.git
+git clone https://github.com/<cherish_22k>/ai-pmo-copilot.git
 cd ai-pmo-copilot
 open index.html   # or just double-click the file
 ```
